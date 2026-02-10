@@ -68,3 +68,149 @@ models:
         memory_gb: 9.5
         quality_score: 93
     tasks: ["general", "writing", "chat"]
+
+  - name: "DeepSeek-Coder-V2-Lite-Instruct"
+    family: "deepseek"
+    params: "16B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-4bit"
+        memory_gb: 9.6
+        quality_score: 88
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/DeepSeek-Coder-V2-Lite-Instruct-8bit"
+        memory_gb: 17.6
+        quality_score: 94
+    tasks: ["coding", "general"]
+
+  - name: "CodeLlama-7B-Instruct"
+    family: "codellama"
+    params: "7B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/CodeLlama-7B-Instruct-4bit"
+        memory_gb: 4.2
+        quality_score: 78
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/CodeLlama-7B-Instruct-8bit"
+        memory_gb: 7.7
+        quality_score: 84
+    tasks: ["coding"]
+
+  - name: "Llama-3.2-3B-Instruct"
+    family: "llama"
+    params: "3B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Llama-3.2-3B-Instruct-4bit"
+        memory_gb: 1.8
+        quality_score: 68
+    tasks: ["general", "chat"]
+
+  - name: "Llama-3.2-1B-Instruct"
+    family: "llama"
+    params: "1B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Llama-3.2-1B-Instruct-4bit"
+        memory_gb: 0.6
+        quality_score: 52
+    tasks: ["chat"]
+
+  - name: "Qwen2.5-Coder-7B-Instruct"
+    family: "qwen"
+    params: "7B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Qwen2.5-Coder-7B-Instruct-4bit"
+        memory_gb: 4.5
+        quality_score: 84
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Qwen2.5-Coder-7B-Instruct-8bit"
+        memory_gb: 8.2
+        quality_score: 91
+    tasks: ["coding"]
+
+  - name: "Qwen2.5-3B-Instruct"
+    family: "qwen"
+    params: "3B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Qwen2.5-3B-Instruct-4bit"
+        memory_gb: 1.8
+        quality_score: 70
+    tasks: ["general", "coding", "chat"]
+
+  - name: "Phi-4-mini-instruct"
+    family: "phi"
+    params: "3.8B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Phi-4-mini-instruct-4bit"
+        memory_gb: 2.3
+        quality_score: 76
+    tasks: ["general", "coding"]
+
+  - name: "Gemma-2-2B-Instruct"
+    family: "gemma"
+    params: "2B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/gemma-2-2b-it-4bit"
+        memory_gb: 1.2
+        quality_score: 62
+    tasks: ["general", "chat"]
+
+  - name: "Mistral-Nemo-12B-Instruct"
+    family: "mistral"
+    params: "12B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Mistral-Nemo-12B-Instruct-4bit"
+        memory_gb: 7.2
+        quality_score: 85
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Mistral-Nemo-12B-Instruct-8bit"
+        memory_gb: 13.2
+        quality_score: 91
+    tasks: ["general", "coding", "writing"]
+
+  - name: "StarCoder2-7B"
+    family: "starcoder"
+    params: "7B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/StarCoder2-7B-4bit"
+        memory_gb: 4.2
+        quality_score: 80
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/StarCoder2-7B-8bit"
+        memory_gb: 7.7
+        quality_score: 87
+    tasks: ["coding"]
+
+  - name: "SmolLM2-1.7B-Instruct"
+    family: "smollm"
+    params: "1.7B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/SmolLM2-1.7B-Instruct-4bit"
+        memory_gb: 1.0
+        quality_score: 55
+    tasks: ["chat", "general"]

@@ -430,6 +430,119 @@ def models(as_json: bool) -> None:
 
 
 @cli.command()
+@click.argument("models", nargs=-1, required=True)
+@click.option("--prompt", type=str, default=None, help="Custom prompt (default: built-in benchmark prompt)")
+@click.option("--max-tokens", type=int, default=256, help="Maximum tokens to generate")
+@click.option("--save/--no-save", default=True, help="Save results to benchmarks/ directory")
+@click.option("--json-output", "as_json", is_flag=True, help="Output raw JSON instead of formatted tables")
+def batch(
+    models: tuple[str, ...],
+    prompt: str | None,
+    max_tokens: int,
+    save: bool,
+    as_json: bool,
+) -> None:
+    """Benchmark multiple models sequentially and show a ranked comparison.
+
+    MODELS is two or more HuggingFace repo IDs to benchmark.
+    """
+    from dataclasses import asdict
+
+    from macsmart.benchmark.report import save_result
+    from macsmart.benchmark.runner import run_benchmark
+    from macsmart.ui.terminal import print_batch_progress, print_batch_summary
+
+    if len(models) < 2:
+        raise click.UsageError("Provide at least 2 models to batch benchmark.")
+
+    results: list = []
+    errors: dict[str, str] = {}
+    total = len(models)
+
+    for i, model in enumerate(models, 1):
+        if not as_json:
+            print_batch_progress(model, i, total)
+
+        try:
+            result = run_benchmark(model, prompt=prompt, max_tokens=max_tokens)
+            results.append(result)
+
+            if save:
+                path = save_result(result)
+                if not as_json:
+                    click.echo(f"  Saved to {path}")
+        except Exception as e:
+            errors[model] = str(e)
+            if not as_json:
+                click.echo(f"  [Error] {model}: {e}")
+
+    if as_json:
+        data: dict = {"results": [asdict(r) for r in results]}
+        if errors:
+            data["errors"] = errors
+        click.echo(json.dumps(data, indent=2))
+    else:
+        print_batch_summary(results)
+        if errors:
+            click.echo(f"\n{len(errors)} model(s) failed:")
+            for model, err in errors.items():
+                click.echo(f"  - {model}: {err}")
+
+
+@cli.command()
+@click.argument("files", nargs=-1, type=click.Path(exists=True))
+@click.option("--latest", "latest_n", type=int, default=None, help="Compare the N most recent results (default: 2)")
+@click.option("--results-dir", type=click.Path(exists=False), default=None, help="Custom results directory")
+@click.option("--json-output", "as_json", is_flag=True, help="Output raw JSON")
+def compare(
+    files: tuple[str, ...],
+    latest_n: int | None,
+    results_dir: str | None,
+    as_json: bool,
+) -> None:
+    """Compare two benchmark results side-by-side.
+
+    Provide two result FILES, or use --latest to compare the most recent results.
+    """
+    from pathlib import Path
+
+    from macsmart.benchmark.report import get_latest_result_paths, load_result_from_file
+    from macsmart.benchmark.runner import compare_results
+    from macsmart.ui.terminal import print_comparison
+
+    if files and latest_n is not None:
+        raise click.UsageError("Cannot use both FILES and --latest at the same time.")
+
+    if files:
+        if len(files) != 2:
+            raise click.UsageError("Provide exactly 2 result files to compare.")
+        paths = [Path(f) for f in files]
+    elif latest_n is not None:
+        if latest_n < 2:
+            raise click.UsageError("--latest must be at least 2.")
+        rdir = Path(results_dir) if results_dir else None
+        try:
+            paths = get_latest_result_paths(n=latest_n, results_dir=rdir)[:2]
+        except ValueError as e:
+            raise click.ClickException(str(e)) from e
+    else:
+        raise click.UsageError("Provide 2 result files or use --latest.")
+
+    try:
+        result_a = load_result_from_file(paths[0])
+        result_b = load_result_from_file(paths[1])
+    except (FileNotFoundError, ValueError) as e:
+        raise click.ClickException(str(e)) from e
+
+    comparison = compare_results(result_a, result_b)
+
+    if as_json:
+        click.echo(json.dumps(comparison, indent=2))
+    else:
+        print_comparison(comparison)
+
+
+@cli.command()
 @click.argument("model")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation prompt")
 def delete(model: str, yes: bool) -> None:

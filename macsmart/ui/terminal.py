@@ -519,6 +519,139 @@ def print_swap_summary(swap_events: list) -> None:
     console.print(table)
 
 
+def print_batch_progress(model: str, index: int, total: int) -> None:
+    """Print a progress line for batch benchmarking.
+
+    Args:
+        model: Model repo ID being benchmarked.
+        index: 1-based index of current model.
+        total: Total number of models in batch.
+    """
+    console.print(f"\n[bold][{index}/{total}][/bold] Benchmarking [cyan]{model}[/cyan]...")
+
+
+def print_batch_summary(results: list) -> None:
+    """Print a ranked summary table of batch benchmark results.
+
+    Args:
+        results: List of BenchmarkResult objects.
+    """
+    if not results:
+        console.print("[dim]No successful benchmark results to summarize.[/dim]")
+        return
+
+    ranked = sorted(results, key=lambda r: r.tokens_per_sec, reverse=True)
+
+    table = Table(title="Batch Benchmark Results", show_lines=True)
+    table.add_column("#", style="bold", width=3, justify="right")
+    table.add_column("Model", style="cyan")
+    table.add_column("Quant", justify="center")
+    table.add_column("Tokens/s", justify="right")
+    table.add_column("TTFT (ms)", justify="right")
+    table.add_column("Peak Mem (GB)", justify="right")
+    table.add_column("Swap (GB)", justify="right")
+
+    for i, r in enumerate(ranked, 1):
+        tps_style = "bold green" if i == 1 else ""
+        table.add_row(
+            str(i),
+            r.model_name,
+            r.quantization,
+            Text(f"{r.tokens_per_sec:.1f}", style=tps_style),
+            f"{r.ttft_ms:.1f}",
+            f"{r.peak_memory_gb:.2f}",
+            f"{r.swap_used_gb:.2f}",
+        )
+
+    console.print(table)
+
+    champion = ranked[0]
+    console.print(
+        f"\n[bold green]Champion:[/bold green] {champion.model_name} "
+        f"({champion.quantization}) at {champion.tokens_per_sec:.1f} tokens/s"
+    )
+
+
+def print_comparison(comparison: dict) -> None:
+    """Print a color-coded comparison of two benchmark results.
+
+    Args:
+        comparison: Dict from runner.compare_results() with baseline/comparison metrics.
+    """
+    table = Table(
+        title=f"{comparison['baseline']} vs {comparison['comparison']}",
+        show_lines=True,
+    )
+    table.add_column("Metric", style="bold cyan")
+    table.add_column("Baseline", justify="right")
+    table.add_column("Comparison", justify="right")
+    table.add_column("Delta", justify="right")
+
+    def _delta_cell(val: float | None, label: str, higher_is_better: bool = True) -> str:
+        if val is None:
+            return "N/A"
+        if val > 0:
+            arrow = "^" if higher_is_better else "v"
+            color = "green" if higher_is_better else "red"
+        elif val < 0:
+            arrow = "v" if higher_is_better else "^"
+            color = "red" if higher_is_better else "green"
+        else:
+            return f"{val:+.2f} {label}"
+        return f"[{color}]{val:+.2f} {label} {arrow}[/{color}]"
+
+    # Tokens/sec (higher is better)
+    tps = comparison["tokens_per_sec"]
+    delta = tps["comparison"] - tps["baseline"]
+    speedup = f" ({tps['speedup']}x)" if tps["speedup"] is not None else ""
+    table.add_row(
+        "Tokens/s",
+        f"{tps['baseline']:.1f}",
+        f"{tps['comparison']:.1f}",
+        _delta_cell(delta, "tok/s", higher_is_better=True) + speedup,
+    )
+
+    # TTFT (lower is better)
+    ttft = comparison["ttft_ms"]
+    table.add_row(
+        "TTFT (ms)",
+        f"{ttft['baseline']:.1f}",
+        f"{ttft['comparison']:.1f}",
+        _delta_cell(ttft["delta_ms"], "ms", higher_is_better=False),
+    )
+
+    # Peak memory (lower is better)
+    mem = comparison["peak_memory_gb"]
+    table.add_row(
+        "Peak Memory (GB)",
+        f"{mem['baseline']:.2f}",
+        f"{mem['comparison']:.2f}",
+        _delta_cell(mem["delta_gb"], "GB", higher_is_better=False),
+    )
+
+    # Swap (lower is better)
+    swap = comparison["swap_used_gb"]
+    table.add_row(
+        "Swap (GB)",
+        f"{swap['baseline']:.2f}",
+        f"{swap['comparison']:.2f}",
+        _delta_cell(swap["delta_gb"], "GB", higher_is_better=False),
+    )
+
+    # Duration (lower is better)
+    dur = comparison["duration_sec"]
+    speedup_dur = f" ({dur['speedup']}x)" if dur["speedup"] is not None else ""
+    delta_dur = dur["comparison"] - dur["baseline"]
+    table.add_row(
+        "Duration (s)",
+        f"{dur['baseline']:.1f}",
+        f"{dur['comparison']:.1f}",
+        _delta_cell(delta_dur, "s", higher_is_better=False) + speedup_dur,
+    )
+
+    console.print(table)
+
+
 def print_cached_models(models: list) -> None:
     """Pretty-print a list of cached models.
 

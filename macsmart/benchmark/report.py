@@ -177,6 +177,69 @@ def load_results(results_dir: Path | None = None) -> list[BenchmarkResult]:
     return [r for _, r in results]
 
 
+def load_result_from_file(path: Path) -> BenchmarkResult:
+    """Load a single benchmark result from a JSON file.
+
+    Args:
+        path: Path to the JSON result file.
+
+    Returns:
+        BenchmarkResult loaded from the file.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the file is not valid benchmark JSON.
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Result file not found: {path}")
+
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in {path}: {e}") from e
+
+    data.pop("timestamp", None)
+    try:
+        return BenchmarkResult(**data)
+    except TypeError as e:
+        raise ValueError(f"Invalid benchmark result in {path}: {e}") from e
+
+
+def get_latest_result_paths(
+    n: int = 2,
+    results_dir: Path | None = None,
+) -> list[Path]:
+    """Return the N most recent non-energy benchmark result file paths.
+
+    Args:
+        n: Number of result paths to return.
+        results_dir: Directory to search. Defaults to benchmarks/.
+
+    Returns:
+        List of Path objects sorted newest-first.
+
+    Raises:
+        ValueError: If fewer than N result files exist.
+    """
+    directory = results_dir or _DEFAULT_RESULTS_DIR
+    if not directory.exists():
+        raise ValueError(f"Results directory does not exist: {directory}")
+
+    paths = sorted(
+        [p for p in directory.glob("*.json") if "energy" not in p.name.lower()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+
+    if len(paths) < n:
+        raise ValueError(
+            f"Need at least {n} result files, found {len(paths)} in {directory}"
+        )
+
+    return paths[:n]
+
+
 def results_to_json_api(results_dir: Path | None = None) -> list[dict]:
     """Serialize benchmark results for the dashboard JSON API.
 

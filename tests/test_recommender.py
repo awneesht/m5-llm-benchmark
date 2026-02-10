@@ -166,6 +166,16 @@ class TestModelsDB:
         result = get_models_for_task("underwater_basket_weaving", models)
         assert result == []
 
+    def test_registry_has_expected_families(self) -> None:
+        """Test that the registry contains all 9 expected model families."""
+        models = load_registry(REGISTRY_PATH)
+        families = {m.family for m in models}
+        expected = {
+            "qwen", "mistral", "llama", "phi", "gemma",
+            "deepseek", "codellama", "starcoder", "smollm",
+        }
+        assert families == expected
+
 
 class TestTaskRouter:
     """Tests for task type detection."""
