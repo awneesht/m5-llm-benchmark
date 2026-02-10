@@ -36,17 +36,25 @@ macsmart/
 │   │   ├── __init__.py
 │   │   ├── runner.py          # Run inference benchmarks (TTFT, tokens/sec, memory peak)
 │   │   ├── energy.py          # Energy measurement (powermetrics wrapper)
+│   │   ├── energy_compare.py  # Battery vs AC power comparison
 │   │   └── report.py          # Generate benchmark reports (JSON + markdown)
+│   ├── dashboard/
+│   │   ├── __init__.py
+│   │   ├── server.py          # Local web server for benchmark dashboard
+│   │   └── static/            # HTML/CSS/JS for dashboard UI
 │   ├── manager/
 │   │   ├── __init__.py
 │   │   ├── download.py        # Model download manager (HuggingFace hub)
 │   │   ├── runtime.py         # MLX / Ollama runtime wrapper
+│   │   ├── session.py         # Model session lifecycle (load, generate, swap)
+│   │   ├── swapper.py         # Dynamic model swapping on memory pressure
 │   │   └── watchdog.py        # Memory watchdog — alert/downsize if memory pressure rises
+│   ├── data/
+│   │   ├── __init__.py
+│   │   └── registry.yaml      # Model definitions with memory profiles
 │   └── ui/
 │       ├── __init__.py
 │       └── terminal.py        # Rich terminal UI (rich library)
-├── models/                    # Model registry YAML files
-│   └── registry.yaml          # Model definitions with memory profiles
 ├── benchmarks/                # Stored benchmark results
 │   └── .gitkeep
 └── tests/
@@ -149,14 +157,18 @@ models:
 - Test on macOS (this is a macOS-specific tool, but profiler should gracefully degrade on Linux)
 - Use `subprocess.run` for macOS commands like `vm_stat`, `sysctl`, `powermetrics`
 
-## Phase 2 (Future)
+## Phase 2 (Implemented)
 
 - Dynamic model swapping (auto-downsize when memory pressure rises)
 - Task-aware routing (auto-pick best model for detected task type)
-- Menu bar app (Swift/SwiftUI wrapper)
 - Benchmark comparison dashboard (web UI)
-- Community benchmark sharing
 - Battery vs plugged-in energy comparison report
+- Batch benchmarking and model comparison
+
+## Phase 3 (Future)
+
+- Menu bar app (Swift/SwiftUI wrapper)
+- Community benchmark sharing
 
 ## Useful macOS Commands
 
