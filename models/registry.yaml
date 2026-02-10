@@ -1,0 +1,70 @@
+models:
+  - name: "Qwen2.5-7B-Instruct"
+    family: "qwen"
+    params: "7B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+        memory_gb: 4.5
+        quality_score: 82
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Qwen2.5-7B-Instruct-8bit"
+        memory_gb: 8.2
+        quality_score: 90
+    tasks: ["general", "coding", "writing"]
+
+  - name: "Mistral-7B-Instruct-v0.3"
+    family: "mistral"
+    params: "7B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Mistral-7B-Instruct-v0.3-4bit"
+        memory_gb: 4.3
+        quality_score: 80
+    tasks: ["general", "coding"]
+
+  - name: "Llama-3.1-8B-Instruct"
+    family: "llama"
+    params: "8B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Meta-Llama-3.1-8B-Instruct-4bit"
+        memory_gb: 5.0
+        quality_score: 85
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
+        memory_gb: 8.5
+        quality_score: 92
+    tasks: ["general", "coding", "writing", "chat"]
+
+  - name: "Phi-3.5-mini-instruct"
+    family: "phi"
+    params: "3.8B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/Phi-3.5-mini-instruct-4bit"
+        memory_gb: 2.4
+        quality_score: 72
+    tasks: ["general", "coding", "summarization"]
+
+  - name: "Gemma-2-9B-Instruct"
+    family: "gemma"
+    params: "9B"
+    quantizations:
+      - quant: "4bit"
+        format: "mlx"
+        hf_repo: "mlx-community/gemma-2-9b-it-4bit"
+        memory_gb: 5.5
+        quality_score: 86
+      - quant: "8bit"
+        format: "mlx"
+        hf_repo: "mlx-community/gemma-2-9b-it-8bit"
+        memory_gb: 9.5
+        quality_score: 93
+    tasks: ["general", "writing", "chat"]
