@@ -35,5 +35,8 @@ macsmart = "macsmart.cli:cli"
 [tool.setuptools.packages.find]
 include = ["macsmart*"]
 
+[tool.setuptools.package-data]
+"macsmart.dashboard" = ["static/**"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

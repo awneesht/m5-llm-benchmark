@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MacSmart Dashboard</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>MacSmart Benchmark Dashboard</h1>
+      <p>Benchmark results and energy comparisons</p>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Tokens/sec by Model</h2>
+        <div class="chart-container">
+          <canvas id="chart-tps"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Time to First Token (ms)</h2>
+        <div class="chart-container">
+          <canvas id="chart-ttft"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Peak Memory (GB)</h2>
+        <div class="chart-container">
+          <canvas id="chart-memory"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Efficiency (tokens/s per GB)</h2>
+        <div class="chart-container">
+          <canvas id="chart-efficiency"></canvas>
+        </div>
+      </div>
+
+      <div class="card full-width">
+        <h2>All Results</h2>
+        <div id="results-table"></div>
+      </div>
+
+      <div class="card full-width energy-panel">
+        <h2>Energy Comparisons</h2>
+        <div id="energy-table"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/dashboard.js"></script>
+</body>
+</html>

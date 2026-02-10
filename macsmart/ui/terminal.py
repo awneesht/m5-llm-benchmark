@@ -329,6 +329,196 @@ def print_download_status(status: object) -> None:
     console.print(Panel(table, title="[bold]Model Download[/bold]", border_style="green"))
 
 
+def print_run_header(
+    task: str,
+    confidence: float,
+    model: str,
+    auto_swap: bool = False,
+) -> None:
+    """Print the header for a `macsmart run` invocation.
+
+    Args:
+        task: Detected or specified task type.
+        confidence: Task detection confidence (0.0–1.0).
+        model: Selected model repo ID.
+        auto_swap: Whether auto-swap is enabled.
+    """
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_column("Key", style="bold cyan")
+    table.add_column("Value")
+
+    conf_pct = f"{confidence * 100:.0f}%"
+    table.add_row("Task", f"{task} ({conf_pct} confidence)")
+    table.add_row("Model", model)
+    if auto_swap:
+        table.add_row("Auto-Swap", "[yellow]Enabled[/yellow]")
+
+    console.print(Panel(table, title="[bold]Run Configuration[/bold]", border_style="blue"))
+
+
+def print_generation_result(result: object) -> None:
+    """Print the result of a generation run.
+
+    Args:
+        result: GenerationResult from runtime.
+    """
+    console.print(Panel(result.text.strip(), title="[bold]Output[/bold]", border_style="green"))
+
+    stats = Table(show_header=False, box=None, padding=(0, 2))
+    stats.add_column("Metric", style="bold cyan")
+    stats.add_column("Value")
+    stats.add_row("TTFT", f"{result.ttft_ms:.1f} ms")
+    stats.add_row("Speed", f"{result.tokens_per_sec:.1f} tokens/s")
+    stats.add_row("Tokens", f"{result.prompt_tokens} prompt + {result.generation_tokens} generated")
+    stats.add_row("Peak Memory", f"{result.peak_memory_gb:.2f} GB")
+    console.print(stats)
+
+
+def print_energy_benchmark_result(result: object) -> None:
+    """Print a combined benchmark + energy result.
+
+    Args:
+        result: EnergyBenchmarkResult object.
+    """
+    b = result.benchmark
+    e = result.energy
+
+    table = Table(show_header=False, box=None, padding=(0, 2))
+    table.add_column("Metric", style="bold cyan")
+    table.add_column("Value")
+
+    table.add_row("Model", b.model_name)
+    table.add_row("Quantization", b.quantization)
+    table.add_row("Power Source", f"[bold]{result.power_source.upper()}[/bold]")
+    table.add_row("Tokens/s", f"{b.tokens_per_sec:.1f}")
+    table.add_row("TTFT", f"{b.ttft_ms:.1f} ms")
+    table.add_row("Peak Memory", f"{b.peak_memory_gb:.2f} GB")
+
+    if e.total_power_watts is not None:
+        table.add_row("Power", f"{e.total_power_watts:.1f} W")
+    if e.total_energy_joules is not None:
+        table.add_row("Energy", f"{e.total_energy_joules:.1f} J")
+
+    border = "magenta" if result.power_source == "battery" else "green"
+    console.print(Panel(table, title=f"[bold]Energy Benchmark ({result.power_source})[/bold]", border_style=border))
+
+
+def print_energy_comparison(comparison: object) -> None:
+    """Print a side-by-side energy comparison.
+
+    Args:
+        comparison: EnergyComparison object.
+    """
+    table = Table(title="Battery vs AC Comparison", show_lines=True)
+    table.add_column("Metric", style="bold cyan")
+    table.add_column("Battery", justify="right")
+    table.add_column("AC", justify="right")
+    table.add_column("Delta", justify="right")
+
+    b = comparison.battery.benchmark
+    a = comparison.ac.benchmark
+
+    table.add_row(
+        "Tokens/s",
+        f"{b.tokens_per_sec:.1f}",
+        f"{a.tokens_per_sec:.1f}",
+        f"{a.tokens_per_sec - b.tokens_per_sec:+.1f}",
+    )
+    table.add_row(
+        "TTFT (ms)",
+        f"{b.ttft_ms:.1f}",
+        f"{a.ttft_ms:.1f}",
+        f"{a.ttft_ms - b.ttft_ms:+.1f}",
+    )
+    table.add_row(
+        "Peak Memory",
+        f"{b.peak_memory_gb:.2f} GB",
+        f"{a.peak_memory_gb:.2f} GB",
+        f"{a.peak_memory_gb - b.peak_memory_gb:+.2f} GB",
+    )
+
+    be = comparison.battery.energy
+    ae = comparison.ac.energy
+
+    bw = be.total_power_watts if be.total_power_watts is not None else 0.0
+    aw = ae.total_power_watts if ae.total_power_watts is not None else 0.0
+    table.add_row("Power (W)", f"{bw:.1f}", f"{aw:.1f}", f"{aw - bw:+.1f}")
+
+    bj = be.total_energy_joules if be.total_energy_joules is not None else 0.0
+    aj = ae.total_energy_joules if ae.total_energy_joules is not None else 0.0
+    table.add_row("Energy (J)", f"{bj:.1f}", f"{aj:.1f}", f"{aj - bj:+.1f}")
+
+    console.print(table)
+
+    # Efficiency summary
+    if comparison.efficiency_battery is not None:
+        console.print(f"\n[bold]Battery efficiency:[/bold] {comparison.efficiency_battery:.3f} tokens/J")
+    if comparison.efficiency_ac is not None:
+        console.print(f"[bold]AC efficiency:[/bold] {comparison.efficiency_ac:.3f} tokens/J")
+    if comparison.speed_ratio is not None:
+        console.print(f"[bold]Speed ratio (AC/Battery):[/bold] {comparison.speed_ratio:.3f}x")
+
+
+def prompt_power_switch(target_source: str) -> None:
+    """Prompt the user to switch power source.
+
+    Args:
+        target_source: The power source to switch to ("battery" or "ac").
+    """
+    if target_source == "battery":
+        console.print(
+            "\n[bold yellow]Please unplug your Mac from AC power.[/bold yellow]"
+        )
+    else:
+        console.print(
+            "\n[bold yellow]Please plug your Mac into AC power.[/bold yellow]"
+        )
+    console.print("[dim]Press Enter when ready...[/dim]")
+
+
+def print_swap_notification(from_model: str, to_model: str, reason: str) -> None:
+    """Print a notification when a model swap occurs.
+
+    Args:
+        from_model: Previous model repo ID.
+        to_model: New model repo ID.
+        reason: Why the swap was triggered.
+    """
+    console.print(
+        f"\n[bold yellow]Model Swap:[/bold yellow] "
+        f"{from_model} -> {to_model}\n"
+        f"[dim]Reason: {reason}[/dim]"
+    )
+
+
+def print_swap_summary(swap_events: list) -> None:
+    """Print a summary of all swaps during a session.
+
+    Args:
+        swap_events: List of SwapEvent objects.
+    """
+    if not swap_events:
+        return
+
+    table = Table(title="Model Swaps", show_lines=True)
+    table.add_column("#", style="bold", width=3, justify="right")
+    table.add_column("From", style="red")
+    table.add_column("To", style="green")
+    table.add_column("Available Memory", justify="right")
+    table.add_column("Reason", style="dim")
+
+    for i, evt in enumerate(swap_events, 1):
+        table.add_row(
+            str(i),
+            evt.from_model,
+            evt.to_model,
+            f"{evt.memory_available_gb:.1f} GB",
+            evt.reason,
+        )
+
+    console.print(table)
+
+
 def print_cached_models(models: list) -> None:
     """Pretty-print a list of cached models.
 

@@ -66,12 +66,95 @@ def recommend(task: str | None, memory_override: float | None, as_json: bool) ->
 
 
 @cli.command()
+@click.argument("prompt")
+@click.option("--task", type=str, default=None, help="Task type: coding, writing, chat, summarization")
+@click.option("--model", type=str, default=None, help="Specific model repo to use (skips auto-select)")
+@click.option("--max-tokens", type=int, default=256, help="Maximum tokens to generate")
+@click.option("--memory", "memory_override", type=float, default=None, help="Override available memory (GB)")
+@click.option("--auto-swap/--no-auto-swap", default=False, help="Enable dynamic model swapping on memory pressure")
+@click.option("--json-output", "as_json", is_flag=True, help="Output raw JSON")
+def run(
+    prompt: str,
+    task: str | None,
+    model: str | None,
+    max_tokens: int,
+    memory_override: float | None,
+    auto_swap: bool,
+    as_json: bool,
+) -> None:
+    """Run inference: auto-detect task, pick model, generate.
+
+    PROMPT is the text prompt to send to the model.
+    """
+    from macsmart.manager.session import Session, SessionConfig
+    from macsmart.ui.terminal import print_generation_result, print_run_header
+
+    config = SessionConfig(
+        prompt=prompt,
+        task=task,
+        model=model,
+        max_tokens=max_tokens,
+        memory_override=memory_override,
+        auto_swap=auto_swap,
+    )
+    session = Session(config=config)
+
+    try:
+        session.select_model()
+    except (RuntimeError, ValueError) as e:
+        raise click.ClickException(str(e)) from e
+
+    if not as_json:
+        print_run_header(
+            task=session.selected_task or "general",
+            confidence=session.task_confidence,
+            model=session.selected_model,
+            auto_swap=auto_swap,
+        )
+
+    swapper = None
+    if auto_swap:
+        from macsmart.manager.swapper import DynamicSwapper, SwapPolicy
+
+        swapper = DynamicSwapper(session=session, policy=SwapPolicy())
+        swapper.start()
+
+    try:
+        session.load()
+        result = session.generate()
+    except Exception as e:
+        raise click.ClickException(f"Generation failed: {e}") from e
+    finally:
+        session.unload()
+        if swapper:
+            swapper.stop()
+
+    if as_json:
+        data = {
+            "task": session.selected_task,
+            "task_confidence": session.task_confidence,
+            "model": session.selected_model,
+            "text": result.text,
+            "ttft_ms": result.ttft_ms,
+            "tokens_per_sec": result.tokens_per_sec,
+            "prompt_tokens": result.prompt_tokens,
+            "generation_tokens": result.generation_tokens,
+            "peak_memory_gb": result.peak_memory_gb,
+            "swaps": session.swap_history,
+        }
+        click.echo(json.dumps(data, indent=2))
+    else:
+        print_generation_result(result)
+
+
+@cli.command()
 @click.argument("model")
 @click.option("--prompt", type=str, default=None, help="Custom prompt (default: built-in benchmark prompt)")
 @click.option("--max-tokens", type=int, default=256, help="Maximum tokens to generate")
 @click.option("--save/--no-save", default=True, help="Save results to benchmarks/ directory")
+@click.option("--energy", is_flag=True, help="Also measure energy consumption")
 @click.option("--json-output", "as_json", is_flag=True, help="Output raw JSON instead of formatted tables")
-def benchmark(model: str, prompt: str | None, max_tokens: int, save: bool, as_json: bool) -> None:
+def benchmark(model: str, prompt: str | None, max_tokens: int, save: bool, energy: bool, as_json: bool) -> None:
     """Run inference benchmark on a model.
 
     MODEL is a HuggingFace repo ID (e.g. mlx-community/Qwen2.5-7B-Instruct-4bit).
@@ -83,6 +166,32 @@ def benchmark(model: str, prompt: str | None, max_tokens: int, save: bool, as_js
     from macsmart.ui.terminal import print_benchmark_result
 
     click.echo(f"Benchmarking {model} (max_tokens={max_tokens})...")
+
+    if energy:
+        from macsmart.benchmark.energy_compare import run_energy_benchmark, save_energy_result
+        from macsmart.profiler.battery import is_on_ac_power
+        from macsmart.ui.terminal import print_energy_benchmark_result
+
+        power_source = "ac" if is_on_ac_power() else "battery"
+        try:
+            result = run_energy_benchmark(model, power_source=power_source, prompt=prompt, max_tokens=max_tokens)
+        except Exception as e:
+            raise click.ClickException(f"Benchmark failed: {e}") from e
+
+        if as_json:
+            data = {
+                "benchmark": asdict(result.benchmark),
+                "energy": asdict(result.energy),
+                "power_source": result.power_source,
+            }
+            click.echo(json.dumps(data, indent=2))
+        else:
+            print_energy_benchmark_result(result)
+
+        if save:
+            path = save_energy_result(result)
+            click.echo(f"\nResults saved to {path}")
+        return
 
     try:
         result = run_benchmark(model, prompt=prompt, max_tokens=max_tokens)
@@ -97,6 +206,139 @@ def benchmark(model: str, prompt: str | None, max_tokens: int, save: bool, as_js
     if save:
         path = save_result(result)
         click.echo(f"\nResults saved to {path}")
+
+
+@cli.command("energy-compare")
+@click.argument("model")
+@click.option("--prompt", type=str, default=None, help="Custom prompt")
+@click.option("--max-tokens", type=int, default=256, help="Maximum tokens to generate")
+@click.option("--save/--no-save", default=True, help="Save results to benchmarks/")
+@click.option("--json-output", "as_json", is_flag=True, help="Output raw JSON")
+def energy_compare(model: str, prompt: str | None, max_tokens: int, save: bool, as_json: bool) -> None:
+    """Compare inference on battery vs AC power.
+
+    Runs the benchmark twice: once on current power source, then prompts
+    you to switch, verifies, and runs again. MODEL is a HuggingFace repo ID.
+    """
+    from dataclasses import asdict
+
+    from macsmart.benchmark.energy_compare import (
+        compare_energy,
+        run_energy_benchmark,
+        save_energy_result,
+    )
+    from macsmart.profiler.battery import is_on_ac_power
+    from macsmart.ui.terminal import (
+        print_energy_benchmark_result,
+        print_energy_comparison,
+        prompt_power_switch,
+    )
+
+    # Determine current power source
+    on_ac = is_on_ac_power()
+    first_source = "ac" if on_ac else "battery"
+    second_source = "battery" if on_ac else "ac"
+
+    click.echo(f"Phase 1: Benchmarking on {first_source.upper()} power...")
+    try:
+        first_result = run_energy_benchmark(
+            model, power_source=first_source, prompt=prompt, max_tokens=max_tokens,
+        )
+    except Exception as e:
+        raise click.ClickException(f"First benchmark failed: {e}") from e
+
+    if not as_json:
+        print_energy_benchmark_result(first_result)
+
+    if save:
+        path = save_energy_result(first_result)
+        click.echo(f"Saved to {path}")
+
+    # Prompt to switch power source
+    if not as_json:
+        prompt_power_switch(second_source)
+    click.pause()
+
+    # Verify power switched
+    switched = is_on_ac_power() != on_ac
+    if not switched:
+        click.echo(
+            f"[Warning] Power source appears unchanged. "
+            f"Expected {second_source}, still on {first_source}. "
+            f"Continuing anyway..."
+        )
+
+    click.echo(f"\nPhase 2: Benchmarking on {second_source.upper()} power...")
+    try:
+        second_result = run_energy_benchmark(
+            model, power_source=second_source, prompt=prompt, max_tokens=max_tokens,
+        )
+    except Exception as e:
+        raise click.ClickException(f"Second benchmark failed: {e}") from e
+
+    if not as_json:
+        print_energy_benchmark_result(second_result)
+
+    if save:
+        path = save_energy_result(second_result)
+        click.echo(f"Saved to {path}")
+
+    # Compare
+    if first_source == "battery":
+        comparison = compare_energy(battery=first_result, ac=second_result)
+    else:
+        comparison = compare_energy(battery=second_result, ac=first_result)
+
+    if as_json:
+        data = {
+            "battery": {
+                "benchmark": asdict(comparison.battery.benchmark),
+                "energy": asdict(comparison.battery.energy),
+            },
+            "ac": {
+                "benchmark": asdict(comparison.ac.benchmark),
+                "energy": asdict(comparison.ac.energy),
+            },
+            "speed_ratio": comparison.speed_ratio,
+            "ttft_delta_ms": comparison.ttft_delta_ms,
+            "energy_ratio": comparison.energy_ratio,
+            "efficiency_battery": comparison.efficiency_battery,
+            "efficiency_ac": comparison.efficiency_ac,
+        }
+        click.echo(json.dumps(data, indent=2))
+    else:
+        print_energy_comparison(comparison)
+
+
+@cli.command()
+@click.option("--port", type=int, default=8377, help="Port for the dashboard server")
+@click.option("--no-browser", is_flag=True, help="Do not auto-open the browser")
+@click.option("--results-dir", type=click.Path(exists=False), default=None, help="Custom results directory")
+def dashboard(port: int, no_browser: bool, results_dir: str | None) -> None:
+    """Open the benchmark comparison dashboard in a browser.
+
+    Starts a local web server showing charts and tables of all
+    benchmark results. Press Ctrl+C to stop the server.
+    """
+    from pathlib import Path
+
+    from macsmart.dashboard.server import start_server, stop_server
+
+    rdir = Path(results_dir) if results_dir else None
+    click.echo(f"Starting dashboard at http://127.0.0.1:{port}")
+    click.echo("Press Ctrl+C to stop.")
+
+    start_server(port=port, results_dir=rdir, open_browser=not no_browser)
+
+    try:
+        import time
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop_server()
+        click.echo("\nDashboard stopped.")
 
 
 @cli.command()

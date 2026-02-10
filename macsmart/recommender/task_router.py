@@ -51,6 +51,34 @@ def detect_task_type(prompt: str) -> str:
     return "general"
 
 
+def detect_task_with_confidence(prompt: str) -> tuple[str, float]:
+    """Detect the task type from a prompt with a confidence score.
+
+    Confidence is the ratio of matched keywords to total keywords
+    for the winning task category. Returns ("general", 0.0) when
+    no specific task matches.
+
+    Args:
+        prompt: User input text.
+
+    Returns:
+        Tuple of (task_type, confidence) where confidence is 0.0–1.0.
+    """
+    prompt_lower = prompt.lower()
+    best_task = "general"
+    best_confidence = 0.0
+
+    for task, patterns in _TASK_PATTERNS:
+        matches = sum(1 for p in patterns if re.search(p, prompt_lower))
+        if matches > 0:
+            confidence = matches / len(patterns)
+            if confidence > best_confidence:
+                best_confidence = confidence
+                best_task = task
+
+    return best_task, round(best_confidence, 3)
+
+
 def validate_task(task: str) -> str:
     """Validate and normalize a task type string.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -95,6 +96,53 @@ def start_watchdog(
         pass
 
     return events
+
+
+def start_watchdog_background(
+    interval_sec: float = 2.0,
+    swap_threshold_gb: float = 1.0,
+    callback: Callable[[WatchdogEvent, list[str]], None] | None = None,
+    stop_event: threading.Event | None = None,
+) -> threading.Thread:
+    """Start the memory watchdog in a background daemon thread.
+
+    The thread runs until *stop_event* is set or the process exits.
+
+    Args:
+        interval_sec: Polling interval in seconds.
+        swap_threshold_gb: Swap usage threshold for alerts.
+        callback: Called each tick with (event, alerts).
+        stop_event: Threading event to signal the loop to stop.
+            If None, a new Event is created (stop by joining the thread).
+
+    Returns:
+        The background daemon Thread (already started).
+    """
+    if stop_event is None:
+        stop_event = threading.Event()
+
+    def _run() -> None:
+        while not stop_event.is_set():
+            event = sample_event()
+            alerts: list[str] = []
+            if event.swap_used_gb >= swap_threshold_gb:
+                alerts.append(
+                    f"Swap usage {event.swap_used_gb:.2f} GB exceeds "
+                    f"threshold ({swap_threshold_gb:.1f} GB)"
+                )
+            if event.pressure_level == "critical":
+                alerts.append("Memory pressure is CRITICAL")
+            elif event.pressure_level == "warn":
+                alerts.append("Memory pressure elevated (warn)")
+
+            if callback is not None:
+                callback(event, alerts)
+
+            stop_event.wait(timeout=interval_sec)
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    return thread
 
 
 def get_memory_timeline(events: list[WatchdogEvent]) -> dict:

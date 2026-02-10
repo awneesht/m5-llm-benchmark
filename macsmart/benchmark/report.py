@@ -80,6 +80,69 @@ def generate_markdown_report(results: list[BenchmarkResult]) -> str:
     return "\n".join(lines)
 
 
+def generate_energy_comparison_report(comparison: object) -> str:
+    """Generate a markdown report comparing battery vs AC energy usage.
+
+    Args:
+        comparison: EnergyComparison object.
+
+    Returns:
+        Markdown-formatted report string.
+    """
+    lines: list[str] = []
+    lines.append("# Energy Comparison Report")
+    lines.append("")
+    lines.append(f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    lines.append("")
+    lines.append(f"**Model:** {comparison.battery.benchmark.model_name}")
+    lines.append("")
+
+    lines.append("| Metric | Battery | AC | Delta |")
+    lines.append("|--------|--------:|---:|------:|")
+
+    b = comparison.battery.benchmark
+    a = comparison.ac.benchmark
+
+    lines.append(
+        f"| Tokens/s | {b.tokens_per_sec:.1f} | {a.tokens_per_sec:.1f} | "
+        f"{a.tokens_per_sec - b.tokens_per_sec:+.1f} |"
+    )
+    lines.append(
+        f"| TTFT (ms) | {b.ttft_ms:.1f} | {a.ttft_ms:.1f} | "
+        f"{a.ttft_ms - b.ttft_ms:+.1f} |"
+    )
+    lines.append(
+        f"| Peak Memory (GB) | {b.peak_memory_gb:.2f} | {a.peak_memory_gb:.2f} | "
+        f"{a.peak_memory_gb - b.peak_memory_gb:+.2f} |"
+    )
+
+    be = comparison.battery.energy
+    ae = comparison.ac.energy
+    bw = be.total_power_watts if be.total_power_watts is not None else 0.0
+    aw = ae.total_power_watts if ae.total_power_watts is not None else 0.0
+    lines.append(
+        f"| Power (W) | {bw:.1f} | {aw:.1f} | {aw - bw:+.1f} |"
+    )
+
+    bj = be.total_energy_joules if be.total_energy_joules is not None else 0.0
+    aj = ae.total_energy_joules if ae.total_energy_joules is not None else 0.0
+    lines.append(
+        f"| Energy (J) | {bj:.1f} | {aj:.1f} | {aj - bj:+.1f} |"
+    )
+
+    lines.append("")
+
+    if comparison.efficiency_battery is not None:
+        lines.append(f"**Battery efficiency:** {comparison.efficiency_battery:.3f} tokens/J")
+    if comparison.efficiency_ac is not None:
+        lines.append(f"**AC efficiency:** {comparison.efficiency_ac:.3f} tokens/J")
+    if comparison.speed_ratio is not None:
+        lines.append(f"**Speed ratio (AC/Battery):** {comparison.speed_ratio:.3f}x")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 def load_results(results_dir: Path | None = None) -> list[BenchmarkResult]:
     """Load all stored benchmark results from the benchmarks/ directory.
 
@@ -112,3 +175,16 @@ def load_results(results_dir: Path | None = None) -> list[BenchmarkResult]:
     # Sort newest first
     results.sort(key=lambda x: x[0], reverse=True)
     return [r for _, r in results]
+
+
+def results_to_json_api(results_dir: Path | None = None) -> list[dict]:
+    """Serialize benchmark results for the dashboard JSON API.
+
+    Args:
+        results_dir: Directory to load results from.
+
+    Returns:
+        List of result dicts ready for JSON serialization.
+    """
+    results = load_results(results_dir=results_dir)
+    return [asdict(r) for r in results]
