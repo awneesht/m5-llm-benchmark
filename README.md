@@ -4,7 +4,7 @@
 
 Unlike LM Studio or Ollama which treat all Macs the same, MacSmart actively monitors available memory, thermal state, and battery level to recommend and manage the best model + quantization for your current system state.
 
-![MacSmart Demo](assets/demo.gif)
+![MacSmart Demo](https://raw.githubusercontent.com/awneesht/m5-llm-benchmark/master/assets/demo.gif)
 
 ## Why?
 
@@ -18,17 +18,21 @@ Unlike LM Studio or Ollama which treat all Macs the same, MacSmart actively moni
 - **System Profiler** — Detect chip (M1–M5), GPU cores, memory bandwidth, thermal state, battery
 - **Model Recommender** — Auto-select the best model + quantization for your available memory
 - **Benchmark Runner** — Measure TTFT, tokens/sec, peak memory, swap usage, energy
+- **Batch & Compare** — Run multiple models head-to-head with side-by-side results
+- **Energy Comparison** — Compare energy efficiency across prompt lengths
 - **Memory Watchdog** — Real-time memory pressure monitoring with live Rich UI
 - **Download Manager** — Download, list, and manage models from HuggingFace Hub
+- **Dashboard** — Interactive web UI for exploring benchmark results
 
 ## Installation
 
 ```bash
-# Clone the repo
+# Install from PyPI
+pip install macsmart
+
+# Or install from source (for development)
 git clone https://github.com/awneesht/m5-llm-benchmark.git
 cd m5-llm-benchmark
-
-# Install (using pip)
 pip install -e ".[dev]"
 ```
 
@@ -44,6 +48,9 @@ macsmart recommend
 # Recommend for a specific task with custom memory budget
 macsmart recommend --task coding --memory 10
 
+# Run inference on a model
+macsmart run mlx-community/Qwen2.5-7B-Instruct-4bit --prompt "Hello, world!"
+
 # Download a model
 macsmart download mlx-community/Qwen2.5-7B-Instruct-4bit
 
@@ -52,6 +59,18 @@ macsmart models
 
 # Benchmark a model
 macsmart benchmark mlx-community/Qwen2.5-7B-Instruct-4bit
+
+# Batch benchmark multiple models
+macsmart batch model1 model2 model3
+
+# Compare models side-by-side
+macsmart compare model1 model2
+
+# Compare energy efficiency across prompt lengths
+macsmart energy-compare model1 model2
+
+# Launch the results dashboard
+macsmart dashboard
 
 # Watch memory pressure in real-time
 macsmart watch

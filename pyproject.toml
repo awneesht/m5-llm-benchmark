@@ -8,9 +8,21 @@ version = "0.1.0"
 description = "Memory-intelligent local LLM orchestration for 16GB Apple Silicon Macs"
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
-    {name = "MacSmart Contributors"},
+    {name = "Awneesh Tiwari"},
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Science/Research",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
 dependencies = [
@@ -29,6 +41,11 @@ dev = [
     "pytest-cov>=4.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/awneesht/m5-llm-benchmark"
+Repository = "https://github.com/awneesht/m5-llm-benchmark"
+"Bug Tracker" = "https://github.com/awneesht/m5-llm-benchmark/issues"
+
 [project.scripts]
 macsmart = "macsmart.cli:cli"
 
@@ -36,6 +53,7 @@ macsmart = "macsmart.cli:cli"
 include = ["macsmart*"]
 
 [tool.setuptools.package-data]
+"macsmart.data" = ["*.yaml"]
 "macsmart.dashboard" = ["static/**"]
 
 [tool.pytest.ini_options]

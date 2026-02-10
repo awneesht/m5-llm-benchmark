@@ -20,7 +20,7 @@ from macsmart.recommender.task_router import (
 )
 
 
-REGISTRY_PATH = Path(__file__).resolve().parent.parent / "models" / "registry.yaml"
+REGISTRY_PATH = Path(__file__).resolve().parent.parent / "macsmart" / "data" / "registry.yaml"
 
 
 class TestRecommendationEngine:

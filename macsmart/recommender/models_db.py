@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from importlib.resources import files
 from pathlib import Path
 
 import yaml
@@ -30,15 +31,14 @@ class ModelEntry:
     tasks: list[str] = field(default_factory=list)
 
 
-# Default path to the model registry, relative to the project root.
-_DEFAULT_REGISTRY = Path(__file__).resolve().parent.parent.parent / "models" / "registry.yaml"
+_DEFAULT_REGISTRY = files("macsmart.data").joinpath("registry.yaml")
 
 
-def load_registry(path: Path | None = None) -> list[ModelEntry]:
+def load_registry(path=None) -> list[ModelEntry]:
     """Load model registry from YAML file.
 
     Args:
-        path: Path to registry.yaml. Defaults to models/registry.yaml.
+        path: Path to registry.yaml. Defaults to bundled package data.
 
     Returns:
         List of ModelEntry objects.
@@ -47,8 +47,11 @@ def load_registry(path: Path | None = None) -> list[ModelEntry]:
         FileNotFoundError: If the registry file does not exist.
     """
     registry_path = path or _DEFAULT_REGISTRY
-    with open(registry_path) as f:
-        data = yaml.safe_load(f)
+    if isinstance(registry_path, Path):
+        with open(registry_path) as f:
+            data = yaml.safe_load(f)
+    else:
+        data = yaml.safe_load(registry_path.read_text())
 
     entries: list[ModelEntry] = []
     for item in data.get("models", []):
