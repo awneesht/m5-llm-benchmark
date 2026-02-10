@@ -1,5 +1,9 @@
 # MacSmart LLM
 
+[![PyPI version](https://img.shields.io/pypi/v/macsmart)](https://pypi.org/project/macsmart/)
+[![Python 3.11+](https://img.shields.io/pypi/pyversions/macsmart)](https://pypi.org/project/macsmart/)
+[![License: MIT](https://img.shields.io/pypi/l/macsmart)](https://github.com/awneesht/m5-llm-benchmark/blob/master/LICENSE)
+
 **Memory-intelligent local LLM orchestration for 16GB Apple Silicon Macs.**
 
 Unlike LM Studio or Ollama which treat all Macs the same, MacSmart actively monitors available memory, thermal state, and battery level to recommend and manage the best model + quantization for your current system state.
