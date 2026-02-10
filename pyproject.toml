@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "macsmart"
-version = "0.2.0"
+version = "0.2.1"
 description = "Memory-intelligent local LLM orchestration for 16GB Apple Silicon Macs"
 readme = "README.md"
 requires-python = ">=3.11"
